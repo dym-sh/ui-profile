@@ -1,0 +1,95 @@
+<link rel="icon" type="image/png" sizes="32x32" href="/thumb">
+<link rel="stylesheet" href="/.ui/ui.css">
+
+<div class="page-header">
+  <div>
+    <a class="thumb" href="/"><img src="/thumb" onerror="hideimage(event)"></a>
+    <h1>
+      <a href="/" class="title"></a>
+      <small class="path"></small>
+    </h1>
+  </div>
+</div>
+
+
+<div class="page-header-secondary">
+  <div>
+    <img class="type-icon">
+    <span class="type-label"></span>
+    <span class="last-updated"></span>
+  </div>
+</div>
+
+<main>
+  <page-content></page-content>
+</main>
+
+<script type="module" src="/.ui/page-content.js"></script>
+<script>
+  const $ = sel => document.body.querySelector(sel)
+  function hideimage (e) {
+    e.currentTarget.style.display = 'none'
+  }
+  beaker.hyperdrive.getInfo().then(info => {
+    $('.page-header .title').textContent = info.title
+  })
+
+  function getTypeLabel (stat) {
+    if (stat.isDirectory()) return 'Folder'
+    if (stat.metadata.type === 'beaker/bookmark') return 'Bookmark'
+    if (stat.metadata.type === 'beaker/blogpost') return 'Blog post'
+    if (stat.metadata.type === 'beaker/comment') return 'Comment'
+    if (stat.metadata.type === 'beaker/microblogpost') return 'Micro blog post'
+    if (stat.metadata.type === 'beaker/page') return 'Page'
+    if (stat.metadata.type === 'beaker/tag') return 'Tag'
+    return 'File'
+  }
+
+  function getTypeIcon (stat) {
+    if (stat.isDirectory()) return 'folder'
+    if (stat.metadata.type === 'beaker/bookmark') return 'bookmark'
+    if (stat.metadata.type === 'beaker/blogpost') return 'blogpost'
+    if (stat.metadata.type === 'beaker/comment') return 'comment'
+    if (stat.metadata.type === 'beaker/microblogpost') return 'microblogpost'
+    if (stat.metadata.type === 'beaker/page') return 'file'
+    if (stat.metadata.type === 'beaker/tag') return 'tag'
+    return 'file'
+  }
+
+  function isDraft (stat) {
+    return !!stat.metadata['beaker/draft']
+  }
+
+  ;(async () => {
+    // TODO be intelligent about folders and index files
+    let stat = await beaker.hyperdrive.stat(location.pathname).catch(e => undefined)
+    if (!stat) return
+    var formatOpts = {dateStyle: 'medium'}
+    var lastUpdated = stat.mtime.toLocaleString('default', formatOpts)
+    if (stat.isFile()) {
+      $('.page-header-secondary .last-updated').textContent = `Last updated: ${lastUpdated}`
+    }
+    $('.page-header-secondary .type-icon').setAttribute('src', `/.ui/img/${getTypeIcon(stat)}.svg`)
+    $('.page-header-secondary .type-label').textContent = getTypeLabel(stat) + (isDraft(stat) ? ' (draft)' : '')
+  })()
+
+  ;(async () => {
+    let acc = []
+    let segments = location.pathname.split('/').filter(Boolean)
+    for (let segment of segments) {
+      acc.push(segment)
+      let path = '/' + acc.join('/')
+      if (!path.endsWith('/')) path += '/'
+      let stat = await beaker.hyperdrive.stat(path).catch(e => undefined)
+
+      let span = document.createElement('span')
+      span.textContent = '›'
+      $('.page-header .path').append(span)
+
+      let a = document.createElement('a')
+      a.textContent = stat?.metadata?.title || segment
+      a.setAttribute('href', path)
+      $('.page-header .path').append(a)
+    }
+  })()
+</script>
